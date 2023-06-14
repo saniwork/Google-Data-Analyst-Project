@@ -1,0 +1,101 @@
+DATA CLEANING AND TRANSFORMING 
+
+-- Creating table for previous year data --
+CREATE TABLE cyclists.year (
+    rideable_type VARCHAR(255),
+    started_at VARCHAR(255),
+    ended_at VARCHAR(255),
+    member_casual VARCHAR(255)
+);
+
+-- loading data from previous 12 months in sql from csv using this query for each  month file 
+LOAD DATA INFILE "C:/Program Files/MySQL/temp/april22_data.csv"
+INTO TABLE cyclists.year
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS;
+
+-- Now we have data in cyclists schema in year table for all previous 12 months 
+DESCRIBE cyclists.year;
+Select *
+from cyclists.year;
+
+-- Cleaning Data 
+
+-- Checking For Nulls
+SELECT *
+FROM cyclists.year
+WHERE rideable_type IS NULL OR started_at IS NULL OR ended_at IS NULL OR member_casual IS NULL 
+or Start_Date =  Null;
+# There are no blanks present in Data
+
+-- Checking if there are any different name used for same groups
+-- Also Counting data group wise
+Select rideable_type , count(*) 
+from year
+group by rideable_type;
+# Electric bikes had the highest number of transactions 2983084, followed by classic bikes with 2666915 customers & docked bikes with 179085.
+
+Select member_casual , count(*) 
+from year
+group by member_casual;
+# There are 3463964 members and 2365120 are casual cyclists
+
+-- Transforming Data
+
+-- Adding Columns to the table 
+CREATE TABLE cyclists.tmp LIKE cyclists.year;
+ALTER TABLE cyclists.tmp
+ADD COLUMN Start_time TIME,
+ADD COLUMN End_Time TIME,
+ADD COlumn Ride_Length Time ,
+ADD COLUMN Start_Day Varchar(255),
+ADD COLUMN Start_Month Varchar(255),
+ADD COLUMN Season VARCHAR(225);
+
+INSERT INTO cyclists.tmp (rideable_type, started_at, ended_at, member_casual , Start_Date) SELECT * FROM cyclists.year;
+RENAME TABLE cyclists.year TO poi, tmp TO cyclists.year;
+DROP TABLE poi;
+
+-- Extracting Starting Date from Starting Date/Time 
+ALTER TABLE cyclists.year
+ADD COLUMN Start_Date DATE;
+UPDATE cyclists.year
+SET Start_Date = STR_TO_DATE(left(started_at,10),'%d-%m-%Y');
+
+-- Adding Column of Starting time and ending time 
+UPDATE cyclists.year
+SET Start_Time = CAST(RIGHT(started_at, 5) AS TIME),
+End_Time = CAST(RIGHT(ended_at, 5) AS TIME);
+
+-- Calculating Ride_Length
+UPDATE cyclists.year
+SET Ride_Length = timediff(End_time,Start_time);
+
+-- Extracting Month name and day name 
+Update cyclists.year
+set Start_Day = DAYNAME(Start_Date),
+Start_Month = monthname(Start_Date);
+
+-- Grouping according to seasons
+Update year
+set Season =  case 
+when Start_Month in ('March','April','May') then'Spring'
+when Start_Month in ('June','July','August') then 'Summer' 
+when Start_Month in ('December','January','February') then 'Winter' 
+when Start_Month in ('September','October','November') then 'Fall' end;
+
+-- Extracting data one by one for all months 
+select rideable_type , member_casual , Start_Date , Start_time , End_Time , Ride_Length , Start_Day , Start_Month , Season
+from year
+where start_month = 'February';
+
+
+
+
+
+
+
+
+
